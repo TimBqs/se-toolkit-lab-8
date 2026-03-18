@@ -223,7 +223,7 @@ Default: `42002`
 
 ### `LMS_API_KEY`
 
-The [API key](./web-api.md#api-key) used to authorize requests to the [LMS API](./lms-api.md#lms-api).
+The [LMS API key](./lms-api.md#lms-api-key).
 
 Default: `my-secret-api-key`
 
