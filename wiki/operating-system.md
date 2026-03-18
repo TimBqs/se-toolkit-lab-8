@@ -17,6 +17,8 @@
   - [Username](#username)
   - [`<user>` placeholder](#user-placeholder)
 - [Group](#group)
+  - [Group name](#group-name)
+  - [`<user-group>` placeholder](#user-group-placeholder)
 - [Permission](#permission)
 
 ## What is an operating system
@@ -131,6 +133,16 @@ A group is a collection of [users](#user) that share the same [access permission
 Groups allow an administrator to manage permissions for multiple users at once: adding a user to a group grants them all the group's permissions.
 
 Each user has a primary group and can belong to additional supplementary groups.
+
+### Group name
+
+A group name is the unique name that identifies a [group](#group) on the operating system. It is used when managing group membership and [permissions](#permission).
+
+### `<user-group>` placeholder
+
+The [group name](#group-name) (without `<` and `>`) that coincides with the [`<user>`](#user-placeholder).
+
+The user `<user>` is in the [group](#group) `<user-group>`.
 
 ## Permission
 
