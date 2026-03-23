@@ -70,14 +70,28 @@ Docs:
 
    [run in the `VS Code Terminal`](./vs-code.md#run-a-command-in-the-vs-code-terminal):
 
-   ```terminal
-   git clone <repo-url> <path>
-   ```
+   - Case 1: You want to specify the `<path>`:
+
+     ```terminal
+     git clone <repo-url> <path>
+     ```
+
+   - Case 2: You want to clone in the [current working directory](./shell.md#current-working-directory) and use the `<repo-name>` as `<path>`:
+
+     ```terminal
+     git clone <repo-url>
+     ```
+
+   - Case 3: You want to clone a repository with submodules and specify the `<path>`:
+
+     ```terminal
+     git clone --recurse-submodules <repo-url> <path>
+     ```
 
    Replace the placeholders:
 
    - [`<repo-url>`](./github.md#repo-url-placeholder)
-   - [`<path>`](./file-system.md#path-placeholder) with the path where you want to clone the repository
+   - [`<path>`](./file-system.md#path-placeholder) with the desired path of the repository directory
 
    Example:
 
