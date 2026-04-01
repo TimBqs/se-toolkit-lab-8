@@ -42,43 +42,83 @@ docker compose --env-file .env.docker.secret logs nanobot --tail 20
 
 ### WebSocket Endpoint Test
 
+**Test Command:**
 ```bash
 echo '{"content":"What can you do in this system?"}' | websocat "ws://localhost:42002/ws/chat?access_key=secret"
 ```
 
-**Response:** Agent returns capabilities description with LMS tools available.
+**Actual Response (What can you do?):**
+```json
+{
+  "type": "text",
+  "content": "I'm **nanobot** 🐈, your personal AI assistant. Here's what I can do in this system:\n\n## Core Capabilities\n\n**File & Workspace Management**\n- Read, write, and edit files in your workspace\n- List directory contents and explore project structure\n\n**Web Access**\n- Search the web for information\n- Fetch and extract content from URLs\n\n**Task Management**\n- Schedule reminders and recurring tasks (via cron)\n- Spawn subagents for background/long-running tasks\n\n## Learning Management System (LMS)\n\nI have integrated LMS tools:\n- List available labs and learners\n- Track pass rates, completion rates, and submission timelines\n- View group performance and top learners\n\n## Skills System\n\n**Available Skills:**\n- **memory** — Long-term facts + searchable event log\n- **lms** — LMS integration\n- **clawhub** — Search and install public agent skills\n- **skill-creator** — Create or update custom skills\n- **cron** — Schedule reminders and recurring tasks",
+  "format": "markdown"
+}
+```
+
+**Actual Response (Backend health with LMS tool call):**
+```
+nanobot logs show: Tool call: mcp_lms_lms_health({})
+
+Agent Response:
+The LMS backend is **healthy** ✅
+
+- **Status**: Healthy
+- **Item Count**: 56 items in the system
+- **Errors**: None
+
+Everything looks good!
+```
+
+**Actual Response (Labs list with LMS tool call):**
+```
+nanobot logs show: Tool call: mcp_lms_lms_labs({})
+
+Agent Response:
+Here are the available labs:
+
+1. **Lab 01** – Products, Architecture & Roles
+2. **Lab 02** — Run, Fix, and Deploy a Backend Service
+3. **Lab 03** — Backend API: Explore, Debug, Implement, Deploy
+4. **Lab 04** — Testing, Front-end, and AI Agents
+5. **Lab 05** — Data Pipeline and Analytics Dashboard
+6. **Lab 06** — Build Your Own Agent
+7. **Lab 07** — Build a Client with an AI Coding Agent
+8. **Lab 08** — lab-08
+
+Would you like more details about any specific lab?
+```
 
 ### Flutter Web Client
 
-Access URL: `http://localhost:42002/flutter`
+**Access URL:** `http://localhost:42002/flutter`
 
 **Login:** Enter `NANOBOT_ACCESS_KEY=secret`
+
+**Evidence Files:**
+- `screenshots/flutter-page.html` — Saved Flutter app HTML (proves client is served)
+- `screenshots/task2b-login.png` — Flutter login screen (397 KB)
+- `screenshots/task2b-conversation.png` — Agent conversation screenshot (487 KB)
 
 ### Screenshots
 
 **Figure 1: Flutter Login Screen**
+
 ![Flutter Login Screen](screenshots/task2b-login.png)
 
+*Login page at `/flutter` — enter `NANOBOT_ACCESS_KEY=secret` to access the chat*
+
 **Figure 2: Agent Conversation with LMS Response**
+
 ![Agent Conversation](screenshots/task2b-conversation.png)
 
-*Screenshot should show:*
-- Login screen with access key input
-- Chat conversation with at least one real LMS-backed answer
-- Structured lab-choice UI (if multiple labs exist)
+*Agent responds with real LMS data — shows 8 available labs retrieved via `mcp_lms_lms_labs` tool*
 
-### Upload Screenshots
+### Evidence Files
 
-From your local machine, run:
-
-```bash
-# Replace <your-username> and <vm-ip> with your actual values
-scp screenshots/task2b-login.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshots/
-scp screenshots/task2b-conversation.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshots/
-
-# Or using full path:
-scp /path/to/local/screenshot.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshots/task2b-conversation.png
-```
+- `screenshots/task2b-login.png` — Flutter login screen (397 KB)
+- `screenshots/task2b-conversation.png` — Agent conversation with LMS response (487 KB)
+- `screenshots/flutter-page.html` — Saved Flutter app HTML source
 
 ### Files Modified for Task 2
 
@@ -92,6 +132,7 @@ scp /path/to/local/screenshot.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshot
 | `docker-compose.yml` | Uncommented Flutter service, caddy mounts, UI relay env vars |
 | `caddy/Caddyfile` | Uncommented `/flutter*` route, added WebSocket timeout settings |
 | `.env.docker.secret` | Changed `QWEN_CODE_AUTH_USE=false` → `true` |
+| `nanobot/workspace/skills/lms/SKILL.md` | Updated to use structured UI for lab selection |
 
 ## Task 3A — Structured logging
 
