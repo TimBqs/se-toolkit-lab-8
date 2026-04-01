@@ -4,10 +4,16 @@ members = [
     "mcp",
     "qwen-code-api",
     "nanobot",
+    "nanobot-websocket-channel/nanobot-channel-protocol",
+    "nanobot-websocket-channel/nanobot-webchat",
+    "nanobot-websocket-channel/mcp-webchat",
 ]
 
 [tool.uv.sources]
 lms-mcp = { workspace = true }
+nanobot-webchat = { workspace = true }
+mcp-webchat = { workspace = true }
+nanobot-channel-protocol = { workspace = true }
 
 [dependency-groups]
 dev = [
