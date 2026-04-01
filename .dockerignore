@@ -24,3 +24,5 @@ docker-compose.yml
 Dockerfile
 
 *.md
+
+!nanobot-websocket-channel/
