@@ -89,6 +89,26 @@ def main():
         if ui_relay_token:
             config["tools"]["mcpServers"]["webchat"]["env"]["NANOBOT_UI_RELAY_TOKEN"] = ui_relay_token
 
+    # Task 3C — Inject mcp_obs (observability) MCP server config
+    victorialogs_url = os.environ.get("NANOBOT_VICTORIALOGS_URL")
+    victoriatraces_url = os.environ.get("NANOBOT_VICTORIATRACES_URL")
+
+    if victorialogs_url or victoriatraces_url:
+        if "mcpServers" not in config["tools"]:
+            config["tools"]["mcpServers"] = {}
+
+        obs_env = {}
+        if victorialogs_url:
+            obs_env["NANOBOT_VICTORIALOGS_URL"] = victorialogs_url
+        if victoriatraces_url:
+            obs_env["NANOBOT_VICTORIATRACES_URL"] = victoriatraces_url
+
+        config["tools"]["mcpServers"]["obs"] = {
+            "command": "python",
+            "args": ["-m", "mcp_obs"],
+            "env": obs_env,
+        }
+
     # Write the resolved config
     with open(RESOLVED_CONFIG_PATH, "w") as f:
         json.dump(config, f, indent=2)

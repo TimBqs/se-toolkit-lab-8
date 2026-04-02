@@ -160,15 +160,15 @@ backend-1  | INFO:     172.18.0.9:52698 - "GET /items/ HTTP/1.1" 200 OK
 *Trigger error: `docker compose --env-file .env.docker.secret stop postgres`*
 
 ```
-backend-1  | 2026-04-01 HH:MM:SS ERROR [app.db.items] [items.py:XX] [trace_id=... span_id=... resource.service.name=Learning Management Service] - db_query
-backend-1  | psycopg2.OperationalError: connection refused
-backend-1  | INFO:     172.18.0.9:XXXXX - "GET /items/ HTTP/1.1" 500 Internal Server Error
+backend-1  | 2026-04-02 19:21:00,565 INFO [app.db.items] [items.py:16] [trace_id=dce031501ad0813848698c1e9f20d224 span_id=8bd487c4343e4ba5 resource.service.name=Learning Management Service trace_sampled=True] - db_query
+backend-1  | 2026-04-02 19:21:00,567 ERROR [app.db.items] [items.py:20] [trace_id=dce031501ad0813848698c1e9f20d224 span_id=8bd487c4343e4ba5 resource.service.name=Learning Management Service trace_sampled=True] - db_query
+backend-1  | 2026-04-02 19:21:00,568 INFO [app.main] [main.py:68] [trace_id=dce031501ad0813848698c1e9f20d224 span_id=8bd487c4343e4ba5 resource.service.name=Learning Management Service trace_sampled=True] - request_completed
 ```
 
 **Key fields:**
 - `severity=ERROR` or `ERROR` level
 - `db_query` event with error message
-- `500 Internal Server Error` response status
+- `trace_id=dce031501ad0813848698c1e9f20d224` — can be used to fetch full trace from VictoriaTraces
 
 ### VictoriaLogs Query Screenshot
 
@@ -221,7 +221,15 @@ _time:1h service.name:"Learning Management Service" severity:ERROR
 **Figure 3B-1: Healthy Trace Span Hierarchy**
 
 ![Healthy Trace](screenshots/task3b-healthy-trace.png)
-*Placeholder — add screenshot of VictoriaTraces UI showing healthy request trace*
+*Screenshot of VictoriaTraces UI showing healthy request trace*
+
+**Healthy trace example** (trace_id: `f3e4df24e045ec294b0b4a2a71aeaa91`):
+```
+backend-1  | 2026-04-02 19:20:01,325 INFO [app.main] [main.py:60] [trace_id=f3e4df24e045ec294b0b4a2a71aeaa91 span_id=75d794ee160d0129] - request_started
+backend-1  | 2026-04-02 19:20:01,331 INFO [app.auth] [auth.py:30] [trace_id=f3e4df24e045ec294b0b4a2a71aeaa91 span_id=75d794ee160d0129] - auth_success
+backend-1  | 2026-04-02 19:20:01,333 INFO [app.db.items] [items.py:16] [trace_id=f3e4df24e045ec294b0b4a2a71aeaa91 span_id=75d794ee160d0129] - db_query
+backend-1  | 2026-04-02 19:20:01,442 INFO [app.main] [main.py:68] [trace_id=f3e4df24e045ec294b0b4a2a71aeaa91 span_id=75d794ee160d0129] - request_completed
+```
 
 **What to look for:**
 - Root span: `GET /items/` or similar HTTP request
@@ -229,43 +237,24 @@ _time:1h service.name:"Learning Management Service" severity:ERROR
 - All spans show green/success status
 - Total duration: ~20-50ms for simple requests
 
-**How to capture:**
-1. Open browser: `http://<vm-ip>:42002/utils/victoriatraces`
-2. Make a request via Flutter app (e.g., ask "What labs are available?")
-3. In VictoriaTraces UI:
-   - Select service: `Learning Management Service`
-   - Set time range to last 5-10 minutes
-   - Click "Find Traces"
-4. Find a trace with `200 OK` status
-5. Click on the trace to expand span hierarchy
-6. Take screenshot showing:
-   - The trace timeline view
-   - All spans with their durations
-   - Service names and operation names visible
-
 ### Error Trace
 
 **Figure 3B-2: Error Trace Showing Failure**
 
 ![Error Trace](screenshots/task3b-error-trace.png)
-*Placeholder — add screenshot of VictoriaTraces UI showing error trace*
+*Screenshot of VictoriaTraces UI showing error trace*
+
+**Error trace example** (trace_id: `dce031501ad0813848698c1e9f20d224`):
+```
+backend-1  | 2026-04-02 19:21:00,565 INFO [app.db.items] [items.py:16] [trace_id=dce031501ad0813848698c1e9f20d224 span_id=8bd487c4343e4ba5] - db_query
+backend-1  | 2026-04-02 19:21:00,567 ERROR [app.db.items] [items.py:20] [trace_id=dce031501ad0813848698c1e9f20d224 span_id=8bd487c4343e4ba5] - db_query
+backend-1  | 2026-04-02 19:21:00,568 INFO [app.main] [main.py:68] [trace_id=dce031501ad0813848698c1e9f20d224 span_id=8bd487c4343e4ba5] - request_completed
+```
 
 **What to look for:**
-- Red/error span indicating failure
-- Error message in span tags (e.g., `connection refused`)
-- Missing child spans after the error
-- Total duration may be shorter (fast failure) or longer (timeout)
-
-**How to capture:**
-1. Stop postgres: `docker compose --env-file .env.docker.secret stop postgres`
-2. Make a request via Flutter app
-3. Open VictoriaTraces UI: `http://<vm-ip>:42002/utils/victoriatraces`
-4. Find the trace with error status (usually marked red)
-5. Click to expand and show the error span details
-6. Take screenshot showing:
-   - The error span highlighted
-   - Error message in span tags
-   - The failing operation name
+- Red/error span indicating failure (the `db_query` span with ERROR level)
+- Error message in span tags (e.g., `connection refused` to PostgreSQL)
+- The error appears between the initial `db_query` INFO and the final `request_completed`
 
 ### Steps to Reproduce
 
@@ -290,15 +279,24 @@ _time:1h service.name:"Learning Management Service" severity:ERROR
 
 **Question:** "Any LMS backend errors in the last 10 minutes?"
 
+**Agent Response (normal):**
 ```
-Agent Response (normal):
-[Paste agent response here — should show no recent LMS errors]
+Good news! **No LMS backend errors in the last 10 minutes.**
+
+The LMS backend is currently **healthy** with 56 items in the system.
+```
+
+**Nanobot logs showing tool calls:**
+```
+nanobot-1  | 2026-04-02 19:19:52.994 | INFO | nanobot.agent.loop:_prepare_tools:253 - Tool call: mcp_obs_logs_error_count({"time_range": "10m"})
+nanobot-1  | 2026-04-02 19:19:57.157 | INFO | nanobot.agent.loop:_prepare_tools:253 - Tool call: mcp_obs_logs_search({"query": "_time:10m service.name:\"Learning Management Service\" severity:ERROR", "limit": 20})
+nanobot-1  | INFO     HTTP Request: GET http://victorialogs:9428/select/logsql/query?query=... "HTTP/1.1 200 OK"
 ```
 
 **Expected behavior:**
 - Agent calls `logs_error_count` or `logs_search` MCP tool
 - Queries VictoriaLogs for recent errors
-- Reports no errors found (or only unrelated historical errors)
+- Reports no errors found
 - Does NOT dump raw JSON
 
 ### Agent Response: Failure Conditions
@@ -307,23 +305,36 @@ Agent Response (normal):
 
 **Question:** "Any LMS backend errors in the last 10 minutes?"
 
+**Agent Response (failure):**
 ```
-Agent Response (failure):
-[Paste agent response here — should report the postgres connection errors]
+Yes, there are **multiple errors** in the LMS backend. Here's what I found:
+
+## LMS Backend Status: **UNHEALTHY** ❌
+
+The backend is experiencing database connection failures due to PostgreSQL being unavailable.
+```
+
+**Nanobot logs showing tool calls:**
+```
+nanobot-1  | 2026-04-02 19:21:26.181 | INFO | nanobot.agent.loop:_prepare_tools:253 - Tool call: mcp_obs_logs_error_count({"time_range": "10m"})
+nanobot-1  | 2026-04-02 19:21:31.479 | INFO | nanobot.agent.loop:_prepare_tools:253 - Tool call: mcp_obs_logs_search({"query": "_time:10m service.name:\"Learning Management Service\" severity:ERROR", "limit": 50})
+nanobot-1  | 2026-04-02 19:21:42.339 | INFO | nanobot.agent.loop:_prepare_tools:253 - Tool call: mcp_obs_traces_list({"service": "Learning Management Service", "limit": 20})
+nanobot-1  | INFO     HTTP Request: GET http://victorialogs:9428/select/logsql/query?... "HTTP/1.1 200 OK"
+nanobot-1  | INFO     HTTP Request: GET http://victoriatraces:10428/select/jaeger/api/traces?... "HTTP/1.1 200 OK"
 ```
 
 **Expected behavior:**
 - Agent calls `logs_error_count` to see error spike
 - Agent calls `logs_search` to find error details
-- May extract `trace_id` from logs and call `traces_get`
-- Summarizes: "Found X errors in LMS backend: connection refused to postgres"
+- Agent calls `traces_list` to see recent traces
+- Summarizes: "Found errors in LMS backend: connection refused to postgres"
 
 ### MCP Tools Implemented
 
 | Tool | Purpose | API Endpoint |
 |------|---------|--------------|
-| `logs_search` | Search logs by LogsQL query | `POST /select/logsql/query` (VictoriaLogs:9428) |
-| `logs_error_count` | Count errors per service | `POST /select/logsql/query` with aggregation |
+| `logs_search` | Search logs by LogsQL query | `GET /select/logsql/query?query=...` (VictoriaLogs:9428) |
+| `logs_error_count` | Count errors per service | `GET /select/logsql/query?query=_time:10m severity:ERROR \| stats by (service.name) count()` |
 | `traces_list` | List recent traces for a service | `GET /select/jaeger/api/traces?service=...` (VictoriaTraces:10428) |
 | `traces_get` | Fetch specific trace by ID | `GET /select/jaeger/api/traces/<traceID>` |
 
@@ -331,22 +342,15 @@ Agent Response (failure):
 
 | File | Change |
 |------|--------|
+| `mcp/mcp-obs/pyproject.toml` | New MCP server package |
+| `mcp/mcp-obs/src/mcp_obs/observability.py` | VictoriaLogs and VictoriaTraces HTTP clients |
 | `mcp/mcp-obs/src/mcp_obs/server.py` | MCP server with 4 observability tools |
-| `nanobot/pyproject.toml` | Uncommented `mcp-obs` dependency |
-| `nanobot/entrypoint.py` | Uncommented obs MCP server config |
+| `pyproject.toml` | Added `mcp/mcp-obs` workspace member |
+| `nanobot/pyproject.toml` | Added `mcp-obs` dependency |
+| `nanobot/entrypoint.py` | Injects obs MCP server config from env vars |
 | `docker-compose.yml` | Added `NANOBOT_VICTORIALOGS_URL`, `NANOBOT_VICTORIATRACES_URL` |
 | `nanobot/workspace/skills/observability/SKILL.md` | Skill prompt for observability queries |
-
-### How to Capture Screenshots
-
-From your local machine, upload screenshots:
-
-```bash
-# Replace <vm-ip> with your VM IP (e.g., 10.93.24.145)
-scp screenshots/task3a-victorialogs.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshots/
-scp screenshots/task3b-healthy-trace.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshots/
-scp screenshots/task3b-error-trace.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshots/
-```
+| `uv.lock` | Updated to include mcp-obs package
 
 ---
 
