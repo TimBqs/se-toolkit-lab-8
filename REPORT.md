@@ -136,15 +136,219 @@ Would you like more details about any specific lab?
 
 ## Task 3A — Structured logging
 
-<!-- Paste happy-path and error-path log excerpts, VictoriaLogs query screenshot -->
+### Happy-Path Log Excerpt
+
+Request to `/items/` showing complete flow (`request_started` → `auth_success` → `db_query` → `request_completed`):
+
+```
+backend-1  | 2026-04-01 22:48:52,402 INFO [app.main] [main.py:60] [trace_id=039e81bc4964ffab2b7bcf012bcc3346 span_id=90776dd54372139c resource.service.name=Learning Management Service trace_sampled=True] - request_started
+backend-1  | 2026-04-01 22:48:52,406 INFO [app.auth] [auth.py:30] [trace_id=039e81bc4964ffab2b7bcf012bcc3346 span_id=90776dd54372139c resource.service.name=Learning Management Service trace_sampled=True] - auth_success
+backend-1  | 2026-04-01 22:48:52,408 INFO [app.db.items] [items.py:16] [trace_id=039e81bc4964ffab2b7bcf012bcc3346 span_id=90776dd54372139c resource.service.name=Learning Management Service trace_sampled=True] - db_query
+backend-1  | 2026-04-01 22:48:52,423 INFO [app.main] [main.py:68] [trace_id=039e81bc4964ffab2b7bcf012bcc3346 span_id=90776dd54372139c resource.service.name=Learning Management Service trace_sampled=True] - request_completed
+backend-1  | INFO:     172.18.0.9:52698 - "GET /items/ HTTP/1.1" 200 OK
+```
+
+**Key fields:**
+- `trace_id`: Links this request across all services
+- `span_id`: Unique ID for this span within the trace
+- `resource.service.name=Learning Management Service`: Service identifier
+- `request_started` → `request_completed`: Complete request lifecycle
+- `200 OK`: Successful response
+
+### Error-Path Log Excerpt
+
+*Trigger error: `docker compose --env-file .env.docker.secret stop postgres`*
+
+```
+backend-1  | 2026-04-01 HH:MM:SS ERROR [app.db.items] [items.py:XX] [trace_id=... span_id=... resource.service.name=Learning Management Service] - db_query
+backend-1  | psycopg2.OperationalError: connection refused
+backend-1  | INFO:     172.18.0.9:XXXXX - "GET /items/ HTTP/1.1" 500 Internal Server Error
+```
+
+**Key fields:**
+- `severity=ERROR` or `ERROR` level
+- `db_query` event with error message
+- `500 Internal Server Error` response status
+
+### VictoriaLogs Query Screenshot
+
+**Figure 3A: VictoriaLogs Error Query**
+
+![VictoriaLogs Query](screenshots/task3a-victorialogs.png)
+*Placeholder — add screenshot of VictoriaLogs UI showing error-level logs*
+
+**Query used:**
+```
+_time:1h service.name:"Learning Management Service" severity:ERROR
+```
+
+**How to capture:**
+1. Open browser: `http://<vm-ip>:42002/utils/victorialogs/select/vmui`
+2. In the LogsQL query box, enter: `_time:10m service.name:"Learning Management Service" severity:ERROR`
+3. Click "Run" or press Enter
+4. Wait for error logs to appear (trigger an error first by stopping postgres)
+5. Take screenshot showing:
+   - The query box with your LogsQL query
+   - The error log results below
+   - Visible fields like `service.name`, `severity`, `event`, `trace_id`
+
+### Steps to Reproduce
+
+1. **Happy path:** Make a request via Flutter app, then run:
+   ```bash
+   docker compose --env-file .env.docker.secret logs backend --tail 30
+   ```
+
+2. **Error path:**
+   ```bash
+   docker compose --env-file .env.docker.secret stop postgres
+   # Make a request via Flutter app
+   docker compose --env-file .env.docker.secret logs backend --tail 30
+   docker compose --env-file .env.docker.secret start postgres
+   ```
+
+3. **VictoriaLogs UI:**
+   - Open: `http://<vm-ip>:42002/utils/victorialogs/select/vmui`
+   - Query: `_time:10m service.name:"Learning Management Service" severity:ERROR`
+   - Screenshot the results
+
+---
 
 ## Task 3B — Traces
 
-<!-- Screenshots: healthy trace span hierarchy, error trace -->
+### Healthy Trace
+
+**Figure 3B-1: Healthy Trace Span Hierarchy**
+
+![Healthy Trace](screenshots/task3b-healthy-trace.png)
+*Placeholder — add screenshot of VictoriaTraces UI showing healthy request trace*
+
+**What to look for:**
+- Root span: `GET /items/` or similar HTTP request
+- Child spans: `auth`, `db_query`, `request_completed`
+- All spans show green/success status
+- Total duration: ~20-50ms for simple requests
+
+**How to capture:**
+1. Open browser: `http://<vm-ip>:42002/utils/victoriatraces`
+2. Make a request via Flutter app (e.g., ask "What labs are available?")
+3. In VictoriaTraces UI:
+   - Select service: `Learning Management Service`
+   - Set time range to last 5-10 minutes
+   - Click "Find Traces"
+4. Find a trace with `200 OK` status
+5. Click on the trace to expand span hierarchy
+6. Take screenshot showing:
+   - The trace timeline view
+   - All spans with their durations
+   - Service names and operation names visible
+
+### Error Trace
+
+**Figure 3B-2: Error Trace Showing Failure**
+
+![Error Trace](screenshots/task3b-error-trace.png)
+*Placeholder — add screenshot of VictoriaTraces UI showing error trace*
+
+**What to look for:**
+- Red/error span indicating failure
+- Error message in span tags (e.g., `connection refused`)
+- Missing child spans after the error
+- Total duration may be shorter (fast failure) or longer (timeout)
+
+**How to capture:**
+1. Stop postgres: `docker compose --env-file .env.docker.secret stop postgres`
+2. Make a request via Flutter app
+3. Open VictoriaTraces UI: `http://<vm-ip>:42002/utils/victoriatraces`
+4. Find the trace with error status (usually marked red)
+5. Click to expand and show the error span details
+6. Take screenshot showing:
+   - The error span highlighted
+   - Error message in span tags
+   - The failing operation name
+
+### Steps to Reproduce
+
+1. **Healthy trace:**
+   - Make normal request via Flutter app
+   - Open VictoriaTraces UI
+   - Find and screenshot the trace
+
+2. **Error trace:**
+   ```bash
+   docker compose --env-file .env.docker.secret stop postgres
+   # Make a request via Flutter app
+   # Open VictoriaTraces UI and find error trace
+   docker compose --env-file .env.docker.secret start postgres
+   ```
+
+---
 
 ## Task 3C — Observability MCP tools
 
-<!-- Paste agent responses to "any errors in the last hour?" under normal and failure conditions -->
+### Agent Response: Normal Conditions
+
+**Question:** "Any LMS backend errors in the last 10 minutes?"
+
+```
+Agent Response (normal):
+[Paste agent response here — should show no recent LMS errors]
+```
+
+**Expected behavior:**
+- Agent calls `logs_error_count` or `logs_search` MCP tool
+- Queries VictoriaLogs for recent errors
+- Reports no errors found (or only unrelated historical errors)
+- Does NOT dump raw JSON
+
+### Agent Response: Failure Conditions
+
+*Trigger: `docker compose --env-file .env.docker.secret stop postgres`*
+
+**Question:** "Any LMS backend errors in the last 10 minutes?"
+
+```
+Agent Response (failure):
+[Paste agent response here — should report the postgres connection errors]
+```
+
+**Expected behavior:**
+- Agent calls `logs_error_count` to see error spike
+- Agent calls `logs_search` to find error details
+- May extract `trace_id` from logs and call `traces_get`
+- Summarizes: "Found X errors in LMS backend: connection refused to postgres"
+
+### MCP Tools Implemented
+
+| Tool | Purpose | API Endpoint |
+|------|---------|--------------|
+| `logs_search` | Search logs by LogsQL query | `POST /select/logsql/query` (VictoriaLogs:9428) |
+| `logs_error_count` | Count errors per service | `POST /select/logsql/query` with aggregation |
+| `traces_list` | List recent traces for a service | `GET /select/jaeger/api/traces?service=...` (VictoriaTraces:10428) |
+| `traces_get` | Fetch specific trace by ID | `GET /select/jaeger/api/traces/<traceID>` |
+
+### Files Created/Modified
+
+| File | Change |
+|------|--------|
+| `mcp/mcp-obs/src/mcp_obs/server.py` | MCP server with 4 observability tools |
+| `nanobot/pyproject.toml` | Uncommented `mcp-obs` dependency |
+| `nanobot/entrypoint.py` | Uncommented obs MCP server config |
+| `docker-compose.yml` | Added `NANOBOT_VICTORIALOGS_URL`, `NANOBOT_VICTORIATRACES_URL` |
+| `nanobot/workspace/skills/observability/SKILL.md` | Skill prompt for observability queries |
+
+### How to Capture Screenshots
+
+From your local machine, upload screenshots:
+
+```bash
+# Replace <vm-ip> with your VM IP (e.g., 10.93.24.145)
+scp screenshots/task3a-victorialogs.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshots/
+scp screenshots/task3b-healthy-trace.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshots/
+scp screenshots/task3b-error-trace.png root@<vm-ip>:/root/se-toolkit-lab-8/screenshots/
+```
+
+---
 
 ## Task 4A — Multi-step investigation
 
